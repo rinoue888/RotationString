@@ -9,7 +9,7 @@
 #import <UIKit/UIKit.h>
 
 @interface ViewController : UIViewController
-- (IBAction)kaiten:(id)sender;
+- (IBAction)resetPosition:(id)sender;
 @property (weak, nonatomic) IBOutlet UILabel *string;
 
 @end

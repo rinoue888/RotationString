@@ -15,11 +15,16 @@
 @property NSTimeInterval timestampBegan;
 @property NSTimeInterval timestampRotationStart;
 @property int rotationDirection;
+@property double rotationRad; // labelの回転角度
 @property CGPoint pointBegan;
+@property CGPoint pointMovedBefore;
+@property int translateState; // 平行移動させる状態であるかを判定
 
 - (void)stopRotation:(CGPoint)point;
 - (void)startRotation:(CGPoint)point withEvent:(UIEvent *) event;
 - (int)judgeRotationDirection:(CGPoint)point;
+- (void)translateLabel:(CGPoint)point withEvent:(UIEvent *) event;
+
 
 #define RIGHT_ROTATION 1
 #define LEFT_ROTATION 2
@@ -47,15 +52,34 @@
     UITouch *touch = [touches anyObject];
     _timestampBegan = event.timestamp;
     _pointBegan = [touch locationInView:self.view];
+    _pointMovedBefore = _pointBegan;
     [self stopRotation:_pointBegan];
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    NSLog(@"move\n");
+//    NSLog(@"move\n");
     UITouch *touchMoved = [touches anyObject];
     CGPoint pointMoved = [touchMoved locationInView:self.view];
-    // TODO:タッチ開始位置が範囲内だったら、なにもしない
+    
+    // タッチ開始位置が範囲内だったら、移動させる。
+    CALayer *layer = self.string.layer;
+    
+    if (_translateState == 0) {
+        if ((layer.frame.origin.x < _pointBegan.x &&
+             _pointBegan.x < layer.frame.origin.x + layer.frame.size.width) &&
+            (layer.frame.origin.y < _pointBegan.y &&
+             _pointBegan.y < layer.frame.origin.y + layer.frame.size.height) )
+        {
+            _translateState = 1;
+        }
+    }
+    
+    if (_translateState == 1) {
+        [self translateLabel:pointMoved withEvent:event];
+         _pointMovedBefore = pointMoved;
+        return;
+    }
     
     // 移動時のpointがlabelの範囲に入ったら、回転させる。
     [self startRotation:pointMoved
@@ -64,6 +88,8 @@
 
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
 {
+    _translateState = 0;
+    
     static const NSTimeInterval kFlickJudgeTimeInterval = 0.3;
     static const NSInteger kFlickMinimumDistance = 10;
     UITouch *touchEnded = [touches anyObject];
@@ -129,7 +155,9 @@
             if (_rotationDirection == RIGHT_ROTATION) {
                 diff = diff * (-1); // 角度をマイナスにする
             }
-            layer.transform = CATransform3DMakeRotation(diff * M_PI, 0.0, 0.0, 1.0);;
+            _rotationRad = _rotationRad + diff * M_PI;
+            CATransform3D rotation = CATransform3DMakeRotation(diff * M_PI, 0.0, 0.0, 1.0);
+            layer.transform = CATransform3DConcat(rotation,layer.transform);
             [layer removeAnimationForKey:@"ImageViewRotation"];
         }
     }
@@ -161,10 +189,20 @@
     
     // アニメーションがなければ、作成して追加。あれば、更新して再開。
     if (rotationAnimation == nil) {
-        animation.toValue = [NSNumber numberWithFloat:M_PI * 2.0];
+        animation.fromValue = [NSNumber numberWithFloat:_rotationRad];
+        animation.toValue = [NSNumber numberWithFloat:(_rotationRad + M_PI * 2.0)];
         if (direction == RIGHT_ROTATION) {
-            animation.toValue = [NSNumber numberWithFloat:M_PI * 2.0 * (-1)];
+            animation.toValue = [NSNumber numberWithFloat:(_rotationRad + M_PI * 2.0 * (-1))];
         }
+//        CATransform3D transform;
+//        transform = CATransform3DMakeRotation(0, 1.0f, 1.0f, 1.0f);
+//        animation.fromValue = [NSNumber valueWithCATransform3D:transform];
+//        transform = CATransform3DMakeRotation(M_PI * 2.0, 1.0, 1.0, 1.0);     // 90右回転
+//        if (direction == RIGHT_ROTATION) {
+//             transform = CATransform3DMakeRotation(M_PI * 2.0 * (-1), 1.0, 1.0, 1.0);     // 90右回転
+//        }
+//        animation.toValue = [NSNumber valueWithCATransform3D:transform];
+
         // これを設定しなければanimationDidStop:finished:は呼ばれない。
         animation.delegate = self;
         animation.duration = 2;             // 2秒で360度回転
@@ -198,14 +236,19 @@
     
     CALayer *layer = self.string.layer;
     
-    // pointのlabel内での象限を判定
-    // anchorPoint の 右下を第1象限とし右回りに2〜4とする。
+    // anchorPoint は affintransForm では移動しないので、中心を再度計算。
+    CGPoint layerCenterPoint;
+    layerCenterPoint.x = layer.frame.origin.x + layer.frame.size.width / 2;
+    layerCenterPoint.y = layer.frame.origin.y + layer.frame.size.height / 2;
+    
+    // point の label 内での象限を判定
+    // layerCenterPoint の右下を第1象限とし右回りに2〜4とする。
     int quadrant = 0;
-    if (layer.position.x < point.x && layer.position.y < point.y) {
+    if (layerCenterPoint.x < point.x && layerCenterPoint.y < point.y) {
         quadrant = 1;
-    } else if (layer.position.x > point.x && layer.position.y < point.y) {
+    } else if (layerCenterPoint.x > point.x && layerCenterPoint.y < point.y) {
         quadrant = 2;
-    } else if (layer.position.x > point.x && layer.position.y > point.y) {
+    } else if (layerCenterPoint.x > point.x && layerCenterPoint.y > point.y) {
         quadrant = 3;
     } else {
         quadrant = 4;
@@ -238,26 +281,34 @@
     
     // 方向検知    
     int retVal = directionTable[quadrant - 1][minWidthOrHeight];
-    NSLog(@"quadrant=%d, minWidthOrHeight=%d, retVal=%d\n",quadrant, minWidthOrHeight, retVal);
+//    NSLog(@"quadrant=%d, minWidthOrHeight=%d, retVal=%d, anchor=(%lf, %lf), origin=(%lf, %lf)\n",quadrant, minWidthOrHeight, retVal, layer.position.x, layer.position.y, layer.frame.origin.x, layer.frame.origin.y);
     return retVal;
 }
 
 /*
- * ボタンがあったときは・・・
+ * 平行移動させる。
  */
-- (IBAction)kaiten:(id)sender
+- (void)translateLabel:(CGPoint)point withEvent:(UIEvent *) event
 {
     CALayer *layer = self.string.layer;
     
-    CABasicAnimation* animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
-    animation.toValue = [NSNumber numberWithFloat:M_PI / 2.0];
-    animation.duration = 0.5;           // 0.5秒で90度回転
-    animation.repeatCount = MAXFLOAT;   // 無限に繰り返す
-    animation.cumulative = YES;         // 効果を累積
-    animation.removedOnCompletion = NO; // 回転のあともとに戻さない
-    animation.fillMode = kCAFillModeForwards; //同上
+    CATransform3D translation = CATransform3DMakeTranslation((point.x - _pointMovedBefore.x), (point.y - _pointMovedBefore.y), 0);
+    
+    layer.transform = CATransform3DConcat(layer.transform, translation);
+    
+}
+
+/*
+ * Resetボタンがあったときは、逆行列をかけて、初期状態に戻す。
+ */
+- (IBAction)resetPosition:(id)sender
+{
+    CALayer *layer = self.string.layer;
+    
+    layer.transform = CATransform3DConcat(layer.transform, CATransform3DInvert(layer.transform));
+    _rotationRad = 0;
     [layer pauseAnimation:NO];
-    [layer addAnimation:animation forKey:@"ImageViewRotation"];
+    [layer removeAllAnimations];
 }
 
 /**
