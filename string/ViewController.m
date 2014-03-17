@@ -91,6 +91,7 @@
     _translateState = 0;
     
     static const NSTimeInterval kFlickJudgeTimeInterval = 0.3;
+    static const NSTimeInterval kLongTapJudgeTimeInterval = 0.5;
     static const NSInteger kFlickMinimumDistance = 10;
     UITouch *touchEnded = [touches anyObject];
     CGPoint pointEnded = [touchEnded locationInView:self.view];
@@ -99,13 +100,24 @@
     if (kFlickMinimumDistance > distanceHorizontal && kFlickMinimumDistance > distanceVertical) {
 //        [self stopRotation:pointEnded];
         //縦にも横にもあまり移動していなければタップ
-//        NSString *message = @"タップ";
-//        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:nil
-//                                                        message:message
-//                                                       delegate:nil
-//                                              cancelButtonTitle:nil
-//                                              otherButtonTitles:@"OK", nil];
-//        [alert show];
+        // 範囲外を長くタップしたら、色を変更
+        NSTimeInterval timeBeganToEnded = event.timestamp - _timestampBegan;
+        if (kLongTapJudgeTimeInterval < timeBeganToEnded) {
+            
+            CALayer *layer = self.string.layer;
+            if ((layer.frame.origin.x > _pointBegan.x ||
+                 _pointBegan.x > layer.frame.origin.x + layer.frame.size.width) ||
+                (layer.frame.origin.y > _pointBegan.y ||
+                 _pointBegan.y > layer.frame.origin.y + layer.frame.size.height) )
+            {
+                if (self.string.textColor == [UIColor redColor]) {
+                    self.string.textColor = [UIColor blackColor];
+                }
+                else {
+                    self.string.textColor = [UIColor redColor];
+                }
+            }
+        }
         return;
     }
     NSTimeInterval timeBeganToEnded = event.timestamp - _timestampBegan;
