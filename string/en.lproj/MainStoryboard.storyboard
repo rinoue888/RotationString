@@ -38,16 +38,27 @@
                                     <action selector="resetPosition:" destination="2" eventType="touchUpInside" id="5H2-8z-L2V"/>
                                 </connections>
                             </button>
+                            <slider hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.5" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="xxQ-7h-k2F">
+                                <rect key="frame" x="18" y="498" width="284" height="31"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <connections>
+                                    <action selector="changedValue:" destination="2" eventType="valueChanged" id="7V9-aa-Ejb"/>
+                                </connections>
+                            </slider>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                         <constraints>
                             <constraint firstAttribute="bottom" secondItem="wwL-aM-FlX" secondAttribute="bottom" constant="78" id="2h4-Ok-MMw"/>
                             <constraint firstAttribute="trailing" secondItem="wwL-aM-FlX" secondAttribute="trailing" constant="42" id="65S-fU-Wxa"/>
-                            <constraint firstItem="2lc-ra-7PQ" firstAttribute="centerX" secondItem="3" secondAttribute="centerX" type="default" id="9fL-lb-6C2"/>
+                            <constraint firstAttribute="bottom" secondItem="xxQ-7h-k2F" secondAttribute="bottom" constant="20" symbolic="YES" type="default" id="FDI-nb-Onk"/>
                             <constraint firstItem="2lc-ra-7PQ" firstAttribute="centerY" secondItem="3" secondAttribute="centerY" type="default" id="Ygb-3K-tLr"/>
+                            <constraint firstItem="2lc-ra-7PQ" firstAttribute="centerX" secondItem="xxQ-7h-k2F" secondAttribute="centerX" type="default" id="je3-ix-gk5"/>
+                            <constraint firstAttribute="trailing" secondItem="xxQ-7h-k2F" secondAttribute="trailing" constant="20" symbolic="YES" type="default" id="low-L8-K06"/>
+                            <constraint firstItem="xxQ-7h-k2F" firstAttribute="leading" secondItem="3" secondAttribute="leading" constant="20" symbolic="YES" type="default" id="zvO-J1-hFG"/>
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="colorSlider" destination="xxQ-7h-k2F" id="73y-97-GJH"/>
                         <outlet property="string" destination="2lc-ra-7PQ" id="k15-jK-UFh"/>
                     </connections>
                 </viewController>

@@ -10,6 +10,8 @@
 
 @interface ViewController : UIViewController
 - (IBAction)resetPosition:(id)sender;
+- (IBAction)changedValue:(id)sender;
 @property (weak, nonatomic) IBOutlet UILabel *string;
+@property (weak, nonatomic) IBOutlet UISlider *colorSlider;
 
 @end

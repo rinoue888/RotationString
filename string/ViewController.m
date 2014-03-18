@@ -24,6 +24,7 @@
 - (void)startRotation:(CGPoint)point withEvent:(UIEvent *) event;
 - (int)judgeRotationDirection:(CGPoint)point;
 - (void)translateLabel:(CGPoint)point withEvent:(UIEvent *) event;
+- (bool)isLayerInside:(CALayer *)layer checkPoint:(CGPoint)point;
 
 
 #define RIGHT_ROTATION 1
@@ -37,7 +38,13 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-	// Do any additional setup after loading the view, typically from a nib.
+    // Do any additional setup after loading the view, typically from a nib.
+    
+    self.colorSlider.value = 0.5;
+    self.string.textColor = [UIColor colorWithHue:self.colorSlider.value
+                                       saturation:0.5
+                                       brightness:0.5
+                                            alpha:1];
 }
 
 - (void)didReceiveMemoryWarning
@@ -100,23 +107,21 @@
     if (kFlickMinimumDistance > distanceHorizontal && kFlickMinimumDistance > distanceVertical) {
 //        [self stopRotation:pointEnded];
         //縦にも横にもあまり移動していなければタップ
-        // 範囲外を長くタップしたら、色を変更
+        // 範囲外を長くタップしたら、スライドバーを表示
         NSTimeInterval timeBeganToEnded = event.timestamp - _timestampBegan;
         if (kLongTapJudgeTimeInterval < timeBeganToEnded) {
-            
             CALayer *layer = self.string.layer;
-            if ((layer.frame.origin.x > _pointBegan.x ||
-                 _pointBegan.x > layer.frame.origin.x + layer.frame.size.width) ||
-                (layer.frame.origin.y > _pointBegan.y ||
-                 _pointBegan.y > layer.frame.origin.y + layer.frame.size.height) )
-            {
-                if (self.string.textColor == [UIColor redColor]) {
-                    self.string.textColor = [UIColor blackColor];
-                }
-                else {
-                    self.string.textColor = [UIColor redColor];
-                }
+            if ([self isLayerInside:layer checkPoint:_pointBegan] == false) {
+                self.colorSlider.hidden = 0;
             }
+            return;
+        }
+        
+        // スライドバー以外をタップしたら、スライドバーを消す
+        CALayer *colorSlider = self.colorSlider.layer;
+        
+        if ([self isLayerInside:colorSlider checkPoint:_pointBegan] == false) {
+            self.colorSlider.hidden = 1;
         }
         return;
     }
@@ -321,6 +326,12 @@
     _rotationRad = 0;
     [layer pauseAnimation:NO];
     [layer removeAllAnimations];
+    
+    self.colorSlider.value = 0.5;
+    self.string.textColor = [UIColor colorWithHue:self.colorSlider.value
+                                       saturation:0.5
+                                       brightness:0.5
+                                            alpha:1];
 }
 
 /**
@@ -348,6 +359,37 @@
 //        layer.transform = [animation.toValue CATransform3DValue];
         [layer removeAnimationForKey:@"ImageViewRotation"];
     }
+}
+
+/*
+ * 指定したポイントが、layerの範囲内にあるかチェックする。
+ */
+- (bool)isLayerInside:(CALayer *)layer checkPoint:(CGPoint)point;
+{
+    assert(layer!=nil);
+    
+    if ((layer.frame.origin.x < point.x &&
+         point.x < layer.frame.origin.x + layer.frame.size.width) &&
+        (layer.frame.origin.y < point.y &&
+         point.y < layer.frame.origin.y + layer.frame.size.height) )
+    {
+        return TRUE;
+    }
+    else {
+        return FALSE;
+    }
+}
+
+/*
+ * スライドバーの値に合わせて、文字の色を変更する。
+ */
+- (IBAction)changedValue:(id)sender;
+{
+    CGFloat value = self.colorSlider.value;
+    self.string.textColor = [UIColor colorWithHue:value
+                                       saturation:0.5
+                                       brightness:0.5
+                                            alpha:1];
 }
 
 @end
